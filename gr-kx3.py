@@ -35,7 +35,7 @@ class grkx3(grc_wxgui.top_block_gui):
 		##################################################
 		# Variables
 		##################################################
-		self.prefix = prefix = "/home/darren/grdata"
+		self.prefix = prefix = "~/grdata"
 		self.poll_vfo = poll_vfo = 0
 		self.samp_rate = samp_rate = 48000
 		self.rig_freq = rig_freq = float(pexpect.run("rigctl -m 2 f"))
