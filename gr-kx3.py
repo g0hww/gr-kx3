@@ -6,8 +6,8 @@
 ##################################################
 
 # DML
-gui_scale = 1
-rig_poll_rate = 0.01
+gui_scale = 2
+rig_poll_rate = 10
 
 from datetime import datetime
 from gnuradio import audio
@@ -20,10 +20,10 @@ from gnuradio.wxgui import fftsink2
 from gnuradio.wxgui import waterfallsink2
 from grc_gnuradio import wxgui as grc_wxgui
 from optparse import OptionParser
-import pexpect
 import threading
 import time
 import wx
+import pexpect
 
 class grkx3(grc_wxgui.top_block_gui):
 
@@ -92,18 +92,18 @@ class grkx3(grc_wxgui.top_block_gui):
 		    rigctl = pexpect.spawn("rigctl -m 2")
 		    while True:
 			    try: 
-			        #pass
 			        rigctl.sendline("f")
 			        rigctl.expect("Frequency: ")
 			        rigctl.expect("\r")
 			        rig_freq = rigctl.before
-			        #self.set_rig_freq(float(rig_freq))
-			        break
+			        self.set_rig_freq(float(rig_freq))
+			        time.sleep(1.0/(rig_poll_rate))
+			        #break
 			    except AttributeError, e:
 			        print "AttributeError in _poll_vfo_probe() ... rigctl error"
 			    except ValueError, e:
 			        print "ValueError in _poll_vfo_probe() ... rigctl error"
-				time.sleep(1.0/(rig_poll_rate))
+
 		_poll_vfo_thread = threading.Thread(target=_poll_vfo_probe)
 		_poll_vfo_thread.daemon = True
 		_poll_vfo_thread.start()
@@ -145,7 +145,7 @@ class grkx3(grc_wxgui.top_block_gui):
 
 	def set_rig_freq(self, rig_freq):
 		self.rig_freq = rig_freq
-		print"set_rig_freq(" + str(self.rig_freq) + ")"
+		print"* set_rig_freq(" + str(self.rig_freq) + ")"
 		self.wxgui_waterfallsink2_0.set_baseband_freq(self.rig_freq)
 		self.wxgui_fftsink2_0.set_baseband_freq(self.rig_freq)
 
@@ -160,7 +160,7 @@ class grkx3(grc_wxgui.top_block_gui):
 
 	def set_click_freq(self, click_freq):
 		self.click_freq = click_freq
-		print "set_click_freq(" + str(click_freq) + ")"		
+		print "* set_click_freq(" + str(click_freq) + ")"		
 		result = pexpect.run("rigctl -m 2 F " + str(self.click_freq))
 		print result
 		self.set_rig_freq(click_freq)
