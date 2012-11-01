@@ -1,7 +1,7 @@
 gr-kx3
 ======
 
-A gnuradio project for use with the Elecraft KX3.
+A trivial gnuradio project for use with the Elecraft KX3, under the GPLv3. 
 
 It works.  Just about.  At the moment it doesn't track the VFO on the radio.  It
 can, but there's a memory leak of about 1MB per second when it does, which is
