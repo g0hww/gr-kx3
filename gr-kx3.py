@@ -5,8 +5,27 @@
 # Generated: Sun Oct 28 15:31:01 2012
 ##################################################
 
+'''
+This file is part of gr-kx3.
+
+gr-kx3 is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+gr-kx3 is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with gr-kx3.  If not, see <http://www.gnu.org/licenses/>.
+
+Copyright 2012 Darren Long darren.long@mac.com
+'''
+
 # DML
-gui_scale = 2
+gui_scale = 1
 rig_poll_rate = 10
 
 from datetime import datetime
@@ -106,7 +125,7 @@ class grkx3(grc_wxgui.top_block_gui):
 
 		_poll_vfo_thread = threading.Thread(target=_poll_vfo_probe)
 		_poll_vfo_thread.daemon = True
-		_poll_vfo_thread.start()
+		#_poll_vfo_thread.start()
 		self.gr_float_to_complex_0 = gr.float_to_complex(1)
 		self.audio_source_0 = audio.source(samp_rate, "", True)
 
