@@ -55,6 +55,7 @@ class grkx3(grc_wxgui.top_block_gui):
 		# Variables
 		##################################################
 		self.rig_freq = rig_freq = float(pexpect.run("rigctl -m 2 f"))
+		self.rigctl = pexpect.spawn("rigctl -m 2")
 		self.prefix = prefix = "~/grdata"
 		self.sync_freq = sync_freq = 1
 		self.samp_rate = samp_rate = 48000
@@ -157,7 +158,7 @@ class grkx3(grc_wxgui.top_block_gui):
 		)
 		self.GridAdd(self._step_down_chooser, 0, 4, 1, 1)		
 		
-		self.audio_source_0 = audio.source(samp_rate, "hw:2,0", True)
+		self.audio_source_0 = audio.source(samp_rate, "hw:0,0", True)
 		
 		def _poll_vfo_probe():
 		    prompt="Rig command: "
@@ -290,7 +291,10 @@ class grkx3(grc_wxgui.top_block_gui):
 	def set_text_freq(self, freq):
 	    self.freq = freq
 	    print "* set_freq(" + str(self.freq) + ")"
-	    result = pexpect.run("rigctl -m 2 F " + str(self.freq))
+	    #result = pexpect.run("rigctl -m 2 F " + str(self.freq))
+	    self.rigctl.sendline("F " + str(self.freq))
+	    self.rigctl.expect("Rig command: ")
+	    result = self.rigctl.before
 	    print result
 	    self.set_baseband_freq(self.freq)
 		
@@ -309,9 +313,14 @@ class grkx3(grc_wxgui.top_block_gui):
 	def set_sync_freq(self, sync_freq):
 	    self.sync_freq = sync_freq
 	    self._sync_freq_chooser.set_value(self.sync_freq)
-	    got_freq = float(pexpect.run("rigctl -m 2 f"))
+	    #got_freq = float(pexpect.run("rigctl -m 2 f"))
+	    self.rigctl.sendline("f")
+	    self.rigctl.expect("Frequency: ")
+	    self.rigctl.expect("Rig command: ")
+	    got_freq = float(self.rigctl.before)
 	    print "* got_freq(" + str(got_freq) + ")"
 	    self.freq = got_freq
+	    self.set_baseband_freq(self.freq)
 
 if __name__ == '__main__':
 	parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
