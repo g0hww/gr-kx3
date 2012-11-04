@@ -196,7 +196,7 @@ class grkx3(grc_wxgui.top_block_gui):
 		print"* set_baseband_freq(" + str(self.rig_freq) + ")"
 		self.wxgui_waterfallsink2_0.set_baseband_freq(self.rig_freq)
 		self.wxgui_fftsink2_0.set_baseband_freq(self.rig_freq)
-		#self._freq_text_box.set_value(self.rig_freq)
+		self._freq_text_box.set_value(self.rig_freq)
 
 	def get_prefix(self):
 		return self.prefix
