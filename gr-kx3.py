@@ -40,6 +40,7 @@ import pexpect
 import threading
 import time
 import wx
+from decimal import *
 
 gui_scale = 1
 rig_poll_rate = 10
@@ -56,6 +57,7 @@ class grkx3(grc_wxgui.top_block_gui):
                 ##################################################
                 self.rig_freq = rig_freq = float(pexpect.run("rigctl -m 2 f"))
                 self.rigctl = pexpect.spawn("rigctl -m 2")
+                self.rigctl.timeout = 2.5
                 self.prefix = prefix = "~/grdata"
                 self.sync_freq = sync_freq = 1
                 self.samp_rate = samp_rate = 48000
@@ -189,6 +191,10 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.connect((self.audio_source_0, 0), (self.gr_float_to_complex_0, 1))
                 self.connect((self.gr_float_to_complex_0, 0), (self.wxgui_fftsink2_0, 0))
 
+        def rig_respawn(self):
+                self.rigctl.close()
+                self.rigctl = pexpect.spawn("rigctl -m 2")
+                self.rigctl.timeout = 2.5
         def get_rig_freq(self):
                 return self.rig_freq
 
@@ -197,7 +203,7 @@ class grkx3(grc_wxgui.top_block_gui):
                 print"* set_baseband_freq(" + str(self.rig_freq) + ")"
                 self.wxgui_waterfallsink2_0.set_baseband_freq(self.rig_freq)
                 self.wxgui_fftsink2_0.set_baseband_freq(self.rig_freq)
-                self._freq_text_box.set_value(self.rig_freq)
+
 
         def get_prefix(self):
                 return self.prefix
@@ -225,22 +231,22 @@ class grkx3(grc_wxgui.top_block_gui):
                     print "Step Up: Band - not implemented"
                 elif(2 == self.step_size):
                     # step up 1MHz
-                    self.set_text_freq(self.freq + 1000000.0)
+                    self._freq_text_box.set_value(self.freq + 1000000.0)
                 elif(3 == self.step_size):
                     # step up 100kHz
-                    self.set_text_freq(self.freq + 100000.0)
+                    self._freq_text_box.set_value(self.freq + 100000.0)
                 elif(4 == self.step_size):
                     # step up 100kHz
-                    self.set_text_freq(self.freq + 10000.0)		    
+                    self._freq_text_box.set_value(self.freq + 10000.0)		    
                 elif(5 == self.step_size):
                     # step up 100kHz
-                    self.set_text_freq(self.freq + 1000.0)
+                    self._freq_text_box.set_value(self.freq + 1000.0)
                 elif(6 == self.step_size):
                     # step up 100kHz
-                    self.set_text_freq(self.freq + 100.0)
+                    self._freq_text_box.set_value(self.freq + 100.0)
                 elif(7 == self.step_size):
                     # step up 100kHz
-                    self.set_text_freq(self.freq + 10.0)
+                    self._freq_text_box.set_value(self.freq + 10.0)
                     
         def get_step_down(self):
                 return self.step_down
@@ -254,22 +260,22 @@ class grkx3(grc_wxgui.top_block_gui):
                     print "Step Down: Band - not implemented"
                 elif(2 == self.step_size):
                     # step down 1MHz
-                    self.set_text_freq(self.freq - 1000000.0)
+                    self._freq_text_box.set_value(self.freq - 1000000.0)
                 elif(3 == self.step_size):
                     # step down 100kHz
-                    self.set_text_freq(self.freq - 100000.0)
+                    self._freq_text_box.set_value(self.freq - 100000.0)
                 elif(4 == self.step_size):
                     # step down 100kHz
-                    self.set_text_freq(self.freq - 10000.0)		    
+                    self._freq_text_box.set_value(self.freq - 10000.0)		    
                 elif(5 == self.step_size):
                     # step down 100kHz
-                    self.set_text_freq(self.freq - 1000.0)
+                    self._freq_text_box.set_value(self.freq - 1000.0)
                 elif(6 == self.step_size):
                     # step down 100kHz
-                    self.set_text_freq(self.freq - 100.0)
+                    self._freq_text_box.set_value(self.freq - 100.0)
                 elif(7 == self.step_size):
                     # step down 100kHz
-                    self.set_text_freq(self.freq - 10.0)
+                    self._freq_text_box.set_value(self.freq - 10.0)
 
         def get_samp_rate(self):
                 return self.samp_rate
@@ -296,16 +302,16 @@ class grkx3(grc_wxgui.top_block_gui):
             self.rigctl.expect("Rig command: ")
             result = self.rigctl.before
             print result
-            self.set_baseband_freq(self.freq)
+            self.set_baseband_freq(int(self.freq))
                 
 
         def get_click_freq(self):
                 return self.click_freq
 
         def set_click_freq(self, click_freq):
-                self.click_freq = click_freq
+                self.click_freq = float(Decimal(click_freq).quantize(Decimal('50.0')))
                 print "* set_click_freq(" + str(self.click_freq) + ")"
-                self.set_text_freq(self.click_freq)
+                self._freq_text_box.set_value( self.click_freq)
                 
         def get_sync_freq(self):
                 return self.sync_freq
@@ -322,12 +328,19 @@ class grkx3(grc_wxgui.top_block_gui):
                         got_freq = float(self.rigctl.before)
                         print "* got_freq(" + str(got_freq) + ")"
                         self.freq = got_freq
-                        self.set_baseband_freq(self.freq)
+                        self._freq_text_box.set_value( self.freq)
                 except AttributeError, e:
                         print "AttributeError in set_sync_freq() ... rigctl error"
+                        self.rig_respawn()
                 except ValueError, e:
                         print "ValueError in set_sync_freq() ... rigctl error"
-
+                        self.rig_respawn()
+                except pexpect.TIMEOUT, e:
+                        print "pexpect.TIMEOUT in set_sync_freq() ... rigctl error"
+                        self.rig_respawn()
+                except pexpect.EOF, e:
+                        print "pexpect.EOF in set_sync_freq() ... rigctl error"
+                        self.rig_respawn()
 
 if __name__ == '__main__':
         parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
