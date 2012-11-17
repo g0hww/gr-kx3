@@ -26,3 +26,8 @@ TCP/IP, so you need to have rigctld running with a serial conenction to the
 radio, using a command like:
 
 	rigctld -m 229 -r /dev/ttyUSB2 -s 38400
+
+I found that I had to bodge hamlib itself in order to increase the timeouts for
+the KX3, which were exceeded whenever I switched bands on the radio.  There are
+some details here: 
+http://www.g0hww.net/2012/11/a-better-bodge-for-hamlib-and-kx3.html
