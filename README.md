@@ -21,6 +21,8 @@ Regarding frequency offsets from PBT settings and IF offset configurations, all
 bets are off for now, until the support for the FI command is added to the
 KX3 (which has been promised by Wayne from Elecraft).
 
-The code wraps up a call to rigctld, so you need to have that running, using a command like:
+The code uses hamlib's rigctl (via pexpect) which then talks to rigctld over
+TCP/IP, so you need to have rigctld running with a serial conenction to the
+radio, using a command like:
 
 	rigctld -m 229 -r /dev/ttyUSB2 -s 38400
