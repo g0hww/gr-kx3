@@ -12,8 +12,10 @@ can, but there's a memory leak of about 1MB per second when it does, which is
 very bad, so that feature is disabled.
 
 It uses pulseaudio for the soundcard I/Q input, so when it is running, run Pulse
-Audio Volume Control and choose the right soundcard for the stereo I/Q input from
-the KX3.
+Audio Volume Control and choose the correct soundcard for the stereo I/Q input from
+the KX3. For me, the application appears on the Redcording tab, as 
+
+	ALSA plug-in [python-2.7]: ALSA Capture
 
 I've added a Frequency input control that will retune the radio.  If you press the 
 Fetch button, it will fetch the frequency from the KX3 (as a work
@@ -33,7 +35,7 @@ The code uses hamlib's rigctl (via pexpect) which then talks to rigctld over
 TCP/IP, so you need to have rigctld running with a serial connection to the
 radio, using a command like:
 
-	rigctld -m 229 -r /dev/ttyUSB2 -s 38400
+	rigctld -m 229 -r /dev/ttyUSB0 -s 38400
 
 I found that I had to bodge hamlib itself in order to increase the timeouts for
 the KX3, which were exceeded whenever I switched bands on the radio.  There are
