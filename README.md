@@ -7,9 +7,13 @@ http://www.g0hww.net/2012/10/gnuradio-hamlib-and-kx3.html
 and more here: 
 http://www.g0hww.net/2012/11/more-buttons-in-gr-kx3-more-bugs-too.html.
 
-It works.  Just about.  At the moment it doesn't track the VFO on the radio.  It
+At the moment it doesn't track the VFO on the radio.  It
 can, but there's a memory leak of about 1MB per second when it does, which is
-very bad.
+very bad, so that feature is disabled.
+
+It uses pulseaudio for the soundcard I/Q input, so when it is running, run Pulse
+Audio Volume Control and choose the right soundcard for the stereo I/Q input from
+the KX3.
 
 I've added a Frequency input control that will retune the radio.  If you press the 
 Fetch button, it will fetch the frequency from the KX3 (as a work
