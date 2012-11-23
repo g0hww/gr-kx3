@@ -13,7 +13,7 @@ the KX3. For me, the application appears on the Redcording tab, as
 
 	ALSA plug-in [python-2.7]: ALSA Capture
 
-The Frequency text input control that will directly retune the radio when the
+The Frequency text input control will directly retune the radio when the
 frequency control mode drop down list is set to "Entry". In that mode, the rig's VFO
 is not polled.  When the frequency control mode drop down list is set to "Track" the VFO
 frequency of the rig is polled. 
