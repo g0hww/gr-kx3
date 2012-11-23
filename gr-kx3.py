@@ -1,9 +1,4 @@
 #!/usr/bin/env python
-##################################################
-# Gnuradio Python Flow Graph
-# Title: Kx3 Rx
-# Generated: Sun Nov  4 12:46:22 2012
-##################################################
 
 '''
 This file is part of gr-kx3.
@@ -37,13 +32,16 @@ from gnuradio.wxgui import waterfallsink2
 from grc_gnuradio import wxgui as grc_wxgui
 from optparse import OptionParser
 import pexpect
-import threading
+import mutex
+from threading import Thread, RLock
 import time
 import wx
 from decimal import *
+import traceback
+import gc
 
 gui_scale = 1
-rig_poll_rate = 10
+rig_poll_rate = 5
 
 class grkx3(grc_wxgui.top_block_gui):
 
@@ -59,7 +57,7 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.rigctl = pexpect.spawn("rigctl -m 2")
                 self.rigctl.timeout = 2.5
                 self.prefix = prefix = "~/grdata"
-                self.sync_freq = sync_freq = 1
+                self.sync_freq = sync_freq = 2
                 self.samp_rate = samp_rate = 48000
                 self.recfile = recfile = prefix + datetime.now().strftime("%Y.%m.%d.%H.%M.%S") + ".dat"
                 self.freq = freq = rig_freq
@@ -67,8 +65,6 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.step_up = step_up = 1
                 self.step_size = step_size = 1
                 self.step_down = step_down = 1
-
-
                 ##################################################
                 # Blocks
                 ##################################################
@@ -123,13 +119,13 @@ class grkx3(grc_wxgui.top_block_gui):
                         converter=forms.float_converter(),
                 )
                 self.GridAdd(self._freq_text_box, 0, 0, 1, 1)
-                self._sync_freq_chooser = forms.button(
+                self._sync_freq_chooser = forms.drop_down(
                         parent=self.GetWin(),
                         value=self.sync_freq,
                         callback=self.set_sync_freq,
                         label="",
-                        choices=[1],
-                        labels=["Fetch"],
+                        choices=[1,2,3],
+                        labels=["Entry","Track","Track & Click"],
                 )
                 self.GridAdd(self._sync_freq_chooser, 0, 1, 1, 1)
                 self._step_size_chooser = forms.drop_down(
@@ -162,27 +158,6 @@ class grkx3(grc_wxgui.top_block_gui):
                 
                 self.audio_source_0 = audio.source(samp_rate, "pulse", True)
                 
-                def _poll_vfo_probe():
-                    prompt="Rig command: "
-                    rigctl = pexpect.spawn("rigctl -m 2")
-                    while True:
-                            try: 
-                                rigctl.sendline("f")
-                                rigctl.expect("Frequency: ")
-                                rigctl.expect("\r")
-                                rig_freq = rigctl.before
-                                self.set_baseband_freq(float(rig_freq))
-                                time.sleep(1.0/(rig_poll_rate))
-                                #break
-                            except AttributeError, e:
-                                print "AttributeError in _poll_vfo_probe() ... rigctl error"
-                            except ValueError, e:
-                                print "ValueError in _poll_vfo_probe() ... rigctl error"
-
-                _poll_vfo_thread = threading.Thread(target=_poll_vfo_probe)
-                _poll_vfo_thread.daemon = True
-                #_poll_vfo_thread.start()
-
                 ##################################################
                 # Connections
                 ##################################################
@@ -190,7 +165,63 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.connect((self.audio_source_0, 1), (self.gr_float_to_complex_0, 0))
                 self.connect((self.audio_source_0, 0), (self.gr_float_to_complex_0, 1))
                 self.connect((self.gr_float_to_complex_0, 0), (self.wxgui_fftsink2_0, 0))
+                # thread sync
+                self.lock = RLock()
+                self.vfo_poll_skip = 0
+                self.set_rig_vfo = False
+                _poll_vfo_thread = Thread(target=self._poll_vfo_probe)
+                _poll_vfo_thread.daemon = True
+                _poll_vfo_thread.start()
 
+
+        def skip_vfo_poll_CS(self):
+            self.lock.acquire()
+            if self.vfo_poll_skip >= 0:
+                self.vfo_poll_skip = rig_poll_rate * 1
+            self.lock.release()
+            gc.collect()
+
+        def should_skip_vfo_poll_CS(self):
+            #self.lock.acquire()
+            temp = self.vfo_poll_skip
+            if temp != 0:
+                if temp > 0:
+                    self.vfo_poll_skip = temp - 1
+                retval = True
+            else:
+                self.vfo_poll_skip = 0
+                retval = False
+            #self.lock.release()
+            return retval
+
+        def poll_vfo(self):
+            self.poll_rigctl.sendline("f")
+            self.poll_rigctl.expect("Frequency: ")
+            self.poll_rigctl.expect("\r")
+            rig_freq = self.poll_rigctl.before
+            self.set_rig_vfo = False
+            self._freq_text_box.set_value(float(rig_freq))
+
+        def _poll_vfo_probe(self):
+            self.poll_rigctl = pexpect.spawn("rigctl -m 2")
+            while True:
+                    try:
+                        self.lock.acquire()
+                        if self.should_skip_vfo_poll_CS() == False:
+                            #msg = "_poll_vfo_probe() ... polling"
+                            self.poll_vfo()
+                        else:
+                            #msg = "_poll_vfo_probe() ... skipping poll: " + str(self.vfo_poll_skip)
+                            pass
+                        self.lock.release()
+                        #print msg
+                    except AttributeError, e:
+                        print "AttributeError in _poll_vfo_probe() ... rigctl error"
+                    except ValueError, e:
+                        print "ValueError in _poll_vfo_probe() ... rigctl error"
+                    time.sleep(1.0/(rig_poll_rate))
+                    gc.collect()
+                    
         def rig_respawn(self):
                 self.rigctl.close()
                 self.rigctl = pexpect.spawn("rigctl -m 2")
@@ -223,6 +254,8 @@ class grkx3(grc_wxgui.top_block_gui):
                 return self.step_up
 
         def set_step_up(self, step_up):
+                self.skip_vfo_poll_CS()
+                self.set_rig_vfo = True
                 self.step_up = step_up
                 self._step_up_chooser.set_value(self.step_up)
                 # step up by the step size enum
@@ -247,11 +280,14 @@ class grkx3(grc_wxgui.top_block_gui):
                 elif(7 == self.step_size):
                     # step up 100kHz
                     self._freq_text_box.set_value(self.freq + 10.0)
+
                     
         def get_step_down(self):
                 return self.step_down
 
         def set_step_down(self, step_down):
+                self.skip_vfo_poll_CS()
+                self.set_rig_vfo = True
                 self.step_down = step_down
                 self._step_down_chooser.set_value(self.step_down)
                 # step down by the step size enum
@@ -277,6 +313,7 @@ class grkx3(grc_wxgui.top_block_gui):
                     # step down 100kHz
                     self._freq_text_box.set_value(self.freq - 10.0)
 
+
         def get_samp_rate(self):
                 return self.samp_rate
 
@@ -295,52 +332,54 @@ class grkx3(grc_wxgui.top_block_gui):
                 return self.freq
 
         def set_text_freq(self, freq):
-            self.freq = freq
-            print "* set_text_freq(" + str(self.freq) + ")"
-            #result = pexpect.run("rigctl -m 2 F " + str(self.freq))
+            self.lock.acquire()
+            if self.vfo_poll_skip > 0 and self.set_rig_vfo == False:
+                print "* set_text_freq(" + str(self.freq) + ") ... ignoring"
+            else:
+                self.freq = freq
+                print "* set_text_freq(" + str(self.freq) + ")"
+                #traceback.print_stack()
+                if 2 != self.sync_freq or self.set_rig_vfo == True:
+                    self.skip_vfo_poll_CS()
+                    self.set_rig_vfo = False
+                    self.set_rig_freq()
+                self.set_baseband_freq(int(self.freq))
+            self.lock.release()
+
+
+        
+        def set_rig_freq(self):
+            print "* set_rig_freq(" + str(self.freq) + ")"
             self.rigctl.sendline("F " + str(self.freq))
             self.rigctl.expect("Rig command: ")
             result = self.rigctl.before
             print result
-            self.set_baseband_freq(int(self.freq))
-                
+            
+            
 
         def get_click_freq(self):
                 return self.click_freq
 
         def set_click_freq(self, click_freq):
-                self.click_freq = float(Decimal(click_freq).quantize(Decimal('50.0')))
-                print "* set_click_freq(" + str(self.click_freq) + ")"
-                self._freq_text_box.set_value( self.click_freq)
+                if 2 != self.sync_freq:
+                    self.skip_vfo_poll_CS()
+                    self.click_freq = float(Decimal(click_freq).quantize(Decimal('50.0')))
+                    print "* set_click_freq(" + str(self.click_freq) + ")"
+                    self.set_rig_vfo = True
+                    self._freq_text_box.set_value( self.click_freq)
                 
         def get_sync_freq(self):
                 return self.sync_freq
 
         def set_sync_freq(self, sync_freq):
                 self.sync_freq = sync_freq
-                self._sync_freq_chooser.set_value(self.sync_freq)
-                print "* set_sync_freq(" + str(self.freq) + ")"
-                #got_freq = float(pexpect.run("rigctl -m 2 f"))
-                try:
-                        self.rigctl.sendline("f")
-                        self.rigctl.expect("Frequency: ")
-                        self.rigctl.expect("Rig command: ")
-                        got_freq = float(self.rigctl.before)
-                        print "* got_freq(" + str(got_freq) + ")"
-                        self.freq = got_freq
-                        self._freq_text_box.set_value( self.freq)
-                except AttributeError, e:
-                        print "AttributeError in set_sync_freq() ... rigctl error"
-                        self.rig_respawn()
-                except ValueError, e:
-                        print "ValueError in set_sync_freq() ... rigctl error"
-                        self.rig_respawn()
-                except pexpect.TIMEOUT, e:
-                        print "pexpect.TIMEOUT in set_sync_freq() ... rigctl error"
-                        self.rig_respawn()
-                except pexpect.EOF, e:
-                        print "pexpect.EOF in set_sync_freq() ... rigctl error"
-                        self.rig_respawn()
+                self.lock.acquire()
+                if 1 == self.sync_freq: # direct entry
+                    self.vfo_poll_skip = -1
+                elif 1 < self.sync_freq: # 2 is vfo tracking, 3 track and click
+                    self.vfo_poll_skip = rig_poll_rate * 1
+                self.lock.release()
+
 
 if __name__ == '__main__':
         parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
