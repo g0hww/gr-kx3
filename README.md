@@ -19,7 +19,7 @@ is not polled.  When the frequency control mode drop down list is set to "Track"
 frequency of the rig is polled. 
 When set to "Track & Click", the rig VFO is tracked and clicking in the waterfall display
 will retune the rig to the selected frequency. In the later two control modes, direct
-frequency entry in the text input control in ignored.
+frequency entry in the text input control is ignored.
 
 You can click in the waterfall (not in the spectrum plot) to re-tune the radio 
 to that frequency.  You can select Step size increment from the drop down
