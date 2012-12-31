@@ -40,3 +40,12 @@ I found that I had to bodge hamlib itself in order to increase the timeouts for
 the KX3, which were exceeded whenever I switched bands on the radio.  There are
 some details here: 
 http://www.g0hww.net/2012/11/a-better-bodge-for-hamlib-and-kx3.html
+
+
+Related Projects
+================
+
+Stefano, IZ0MJE has posted about projects using Funcube Dongles and USRPs to tap IF 
+outputs from other Hamlib controlled transceivers, reusing code from gr-kx3.  See here:
+http://www.tarapippo.net/gnuradio/ft950.html
+
