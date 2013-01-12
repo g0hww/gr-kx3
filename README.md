@@ -1,7 +1,7 @@
 gr-kx3
 ======
 
-A trivial panadapte for use with the Elecraft KX3, using gnuradio and hamlib, written in 
+A trivial panadapter for use with the Elecraft KX3, using gnuradio and hamlib, written in 
 Python and released under the GPLv3. There are some screenshots here: 
 http://www.g0hww.net/2012/10/gnuradio-hamlib-and-kx3.html 
 and more here: 
