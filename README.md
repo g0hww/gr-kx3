@@ -7,7 +7,7 @@ http://www.g0hww.net/2012/10/gnuradio-hamlib-and-kx3.html
 and more here: 
 http://www.g0hww.net/2012/11/more-buttons-in-gr-kx3-more-bugs-too.html.
 
-It uses pulseaudio for the soundcard I/Q input, so when it is running, run Pulse
+It uses pulseaudio for the soundcard I/Q input, so when gr-kx3 is running, run Pulse
 Audio Volume Control and choose the correct soundcard for the stereo I/Q input from
 the KX3. For me, the application appears on the Redcording tab, as 
 
@@ -18,8 +18,7 @@ frequency control mode drop down list is set to "Entry". In that mode, the rig's
 is not polled.  When the frequency control mode drop down list is set to "Track" the VFO
 frequency of the rig is polled. 
 When set to "Track & Click", the rig VFO is tracked and clicking in the waterfall display
-will retune the rig to the selected frequency. In the later two control modes, direct
-frequency entry in the text input control is ignored.
+will retune the rig to the selected frequency. 
 
 You can click in the waterfall (not in the spectrum plot) to re-tune the radio 
 to that frequency.  You can select Step size increment from the drop down

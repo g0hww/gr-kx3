@@ -41,15 +41,14 @@ import traceback
 import gc
 
 gui_scale = 1
-rig_poll_rate = 5
+rig_poll_rate = 10
 
 class grkx3(grc_wxgui.top_block_gui):
 
         def __init__(self):
-                grc_wxgui.top_block_gui.__init__(self, title="Kx3 Rx")
+                grc_wxgui.top_block_gui.__init__(self, title="gr-kx3")
                 _icon_path = "/usr/share/icons/hicolor/32x32/apps/gnuradio-grc.png"
                 self.SetIcon(wx.Icon(_icon_path, wx.BITMAP_TYPE_ANY))
-
                 ##################################################
                 # Variables
                 ##################################################
@@ -168,20 +167,23 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.lock = RLock()
                 self.vfo_poll_skip = 0
                 self.set_rig_vfo = False
+                self.quit = False
                 _poll_vfo_thread = Thread(target=self._poll_vfo_probe)
                 _poll_vfo_thread.daemon = True
                 _poll_vfo_thread.start()
 
+        def quit(self):
+            self.quit = True
 
         def skip_vfo_poll_CS(self):
             self.lock.acquire()
             if self.vfo_poll_skip >= 0:
                 self.vfo_poll_skip = rig_poll_rate * 1
+                #traceback.print_stack()
             self.lock.release()
             gc.collect()
 
         def should_skip_vfo_poll_CS(self):
-            #self.lock.acquire()
             temp = self.vfo_poll_skip
             if temp != 0:
                 if temp > 0:
@@ -190,34 +192,55 @@ class grkx3(grc_wxgui.top_block_gui):
             else:
                 self.vfo_poll_skip = 0
                 retval = False
-            #self.lock.release()
             return retval
 
         def poll_vfo(self):
-            self.poll_rigctl.sendline("f")
-            self.poll_rigctl.expect("Frequency: ")
-            self.poll_rigctl.expect("\r")
-            rig_freq = self.poll_rigctl.before
-            self.set_rig_vfo = False
-            self._freq_text_box.set_value(float(rig_freq))
+            retval = False
+            self.poll_rigctl.sendline("f") 
+            res = self.poll_rigctl.expect(["Frequency: ", pexpect.TIMEOUT])
+            if res == 0:
+                res = self.poll_rigctl.expect(["\r", pexpect.TIMEOUT])
+                if res == 0:
+                    rig_freq = self.poll_rigctl.before
+                    self.set_rig_vfo = False
+                    self._freq_text_box.set_value(float(rig_freq))
+                    retval = True
+            return retval    
 
         def _poll_vfo_probe(self):
             self.poll_rigctl = pexpect.spawn("rigctl -m 2")
+            self.poll_rigctl.timeout = 1.5
+            reset_rigctl = False
             while True:
+                    if True == self.quit:
+                        print "Warning: _poll_vfo_probe() quiting!"
+                        break
+                    self.lock.acquire()
                     try:
-                        self.lock.acquire()
                         if self.should_skip_vfo_poll_CS() == False:
                             #msg = "_poll_vfo_probe() ... polling"
-                            self.poll_vfo()
+                            if not self.poll_vfo():
+                                reset_rigctl = True
                         else:
                             #msg = "_poll_vfo_probe() ... skipping poll: " + str(self.vfo_poll_skip)
                             pass
-                        self.lock.release()
                         #print msg
                     except AttributeError, e:
                         print "AttributeError in _poll_vfo_probe() ... rigctl error"
+                        reset_rigctl = True
                     except ValueError, e:
                         print "ValueError in _poll_vfo_probe() ... rigctl error"
+                        reset_rigctl = True
+                    except Exception, e:
+                        print "Exception in _poll_vfo_probe() ... unknown error"
+                        reset_rigctl = True    
+                    self.lock.release()
+                    if True == reset_rigctl:
+                        print "Warning: _poll_vfo_probe() resetting rigctl"
+                        self.poll_rigctl.close()
+                        self.poll_rigctl = pexpect.spawn("rigctl -m 2")
+                        self.poll_rigctl.timeout = 1.5
+                        reset_rigctl = False
                     time.sleep(1.0/(rig_poll_rate))
                     gc.collect()
                     
@@ -268,16 +291,16 @@ class grkx3(grc_wxgui.top_block_gui):
                     # step up 100kHz
                     self._freq_text_box.set_value(self.freq + 100000.0)
                 elif(4 == self.step_size):
-                    # step up 100kHz
+                    # step up 10kHz
                     self._freq_text_box.set_value(self.freq + 10000.0)		    
                 elif(5 == self.step_size):
-                    # step up 100kHz
+                    # step up 1kHz
                     self._freq_text_box.set_value(self.freq + 1000.0)
                 elif(6 == self.step_size):
-                    # step up 100kHz
+                    # step up 100Hz
                     self._freq_text_box.set_value(self.freq + 100.0)
                 elif(7 == self.step_size):
-                    # step up 100kHz
+                    # step up 10Hz
                     self._freq_text_box.set_value(self.freq + 10.0)
 
                     
@@ -300,16 +323,16 @@ class grkx3(grc_wxgui.top_block_gui):
                     # step down 100kHz
                     self._freq_text_box.set_value(self.freq - 100000.0)
                 elif(4 == self.step_size):
-                    # step down 100kHz
+                    # step down 10kHz
                     self._freq_text_box.set_value(self.freq - 10000.0)		    
                 elif(5 == self.step_size):
-                    # step down 100kHz
+                    # step down 1kHz
                     self._freq_text_box.set_value(self.freq - 1000.0)
                 elif(6 == self.step_size):
-                    # step down 100kHz
+                    # step down 100Hz
                     self._freq_text_box.set_value(self.freq - 100.0)
                 elif(7 == self.step_size):
-                    # step down 100kHz
+                    # step down 10Hz
                     self._freq_text_box.set_value(self.freq - 10.0)
 
 
@@ -339,7 +362,7 @@ class grkx3(grc_wxgui.top_block_gui):
                 print "* set_text_freq(" + str(self.freq) + ")"
                 #traceback.print_stack()
                 if 2 != self.sync_freq or self.set_rig_vfo == True:
-                    self.skip_vfo_poll_CS()
+                    #self.skip_vfo_poll_CS()
                     self.set_rig_vfo = False
                     self.set_rig_freq()
                 self.set_baseband_freq(int(self.freq))
@@ -351,8 +374,8 @@ class grkx3(grc_wxgui.top_block_gui):
             print "* set_rig_freq(" + str(self.freq) + ")"
             self.rigctl.sendline("F " + str(self.freq))
             self.rigctl.expect("Rig command: ")
-            result = self.rigctl.before
-            print result
+            #result = self.rigctl.before
+            #print result
             
             
 
@@ -360,9 +383,9 @@ class grkx3(grc_wxgui.top_block_gui):
                 return self.click_freq
 
         def set_click_freq(self, click_freq):
-                if 2 != self.sync_freq:
+                if 3 == self.sync_freq:
                     self.skip_vfo_poll_CS()
-                    self.click_freq = float(Decimal(click_freq).quantize(Decimal('50.0')))
+                    self.click_freq = float(Decimal(click_freq).quantize(Decimal('1.0')))
                     print "* set_click_freq(" + str(self.click_freq) + ")"
                     self.set_rig_vfo = True
                     self._freq_text_box.set_value( self.click_freq)
@@ -380,9 +403,15 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.lock.release()
 
 
+
 if __name__ == '__main__':
         parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
         (options, args) = parser.parse_args()
         tb = grkx3()
-        tb.Run(True)
+        try:
+            tb.Run(True)
+        except (KeyboardInterrupt, SystemExit):
+            pass
+        finally:
+            exit_now = True;
 
