@@ -9,7 +9,7 @@ http://www.g0hww.net/2012/11/more-buttons-in-gr-kx3-more-bugs-too.html.
 
 It uses pulseaudio for the soundcard I/Q input, so when gr-kx3 is running, run Pulse
 Audio Volume Control and choose the correct soundcard for the stereo I/Q input from
-the KX3. For me, the application appears on the Redcording tab, as 
+the KX3. For me, the application appears on the Recording tab, as 
 
 	ALSA plug-in [python-2.7]: ALSA Capture
 
