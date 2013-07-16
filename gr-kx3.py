@@ -41,7 +41,7 @@ import traceback
 import gc
 
 gui_scale = 1
-rig_poll_rate = 10
+rig_poll_rate = 4
 
 class grkx3(grc_wxgui.top_block_gui):
 
@@ -62,7 +62,7 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.freq = freq = rig_freq
                 self.click_freq = click_freq = 0
                 self.step_up = step_up = 1
-                self.step_size = step_size = 1
+                self.step_size = step_size = 6
                 self.step_down = step_down = 1
                 ##################################################
                 # Blocks
@@ -74,8 +74,8 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.wxgui_waterfallsink2_0 = waterfallsink2.waterfall_sink_c(
                         self.nb0.GetPage(0).GetWin(),
                         baseband_freq=rig_freq,
-                        dynamic_range=60,
-                        ref_level=-10,
+                        dynamic_range=20,
+                        ref_level=-40,
                         ref_scale=1.0,
                         sample_rate=samp_rate,
                         fft_size=2048,
@@ -234,7 +234,8 @@ class grkx3(grc_wxgui.top_block_gui):
                     except Exception, e:
                         print "Exception in _poll_vfo_probe() ... unknown error"
                         reset_rigctl = True    
-                    self.lock.release()
+                    finally:
+                        self.lock.release()
                     if True == reset_rigctl:
                         print "Warning: _poll_vfo_probe() resetting rigctl"
                         self.poll_rigctl.close()
@@ -361,7 +362,7 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.freq = freq
                 print "* set_text_freq(" + str(self.freq) + ")"
                 #traceback.print_stack()
-                if 2 != self.sync_freq or self.set_rig_vfo == True:
+                if 1 == self.sync_freq or self.set_rig_vfo == True:
                     #self.skip_vfo_poll_CS()
                     self.set_rig_vfo = False
                     self.set_rig_freq()
@@ -385,7 +386,7 @@ class grkx3(grc_wxgui.top_block_gui):
         def set_click_freq(self, click_freq):
                 if 3 == self.sync_freq:
                     self.skip_vfo_poll_CS()
-                    self.click_freq = float(Decimal(click_freq).quantize(Decimal('1.0')))
+                    self.click_freq = float(click_freq)
                     print "* set_click_freq(" + str(self.click_freq) + ")"
                     self.set_rig_vfo = True
                     self._freq_text_box.set_value( self.click_freq)
