@@ -209,7 +209,7 @@ class grkx3(grc_wxgui.top_block_gui):
 
         def _poll_vfo_probe(self):
             self.poll_rigctl = pexpect.spawn("rigctl -m 2")
-            self.poll_rigctl.timeout = 1.5
+            self.poll_rigctl.timeout = 2.5
             reset_rigctl = False
             while True:
                     if True == self.quit:
@@ -240,7 +240,7 @@ class grkx3(grc_wxgui.top_block_gui):
                         print "Warning: _poll_vfo_probe() resetting rigctl"
                         self.poll_rigctl.close()
                         self.poll_rigctl = pexpect.spawn("rigctl -m 2")
-                        self.poll_rigctl.timeout = 1.5
+                        self.poll_rigctl.timeout = 2.5
                         reset_rigctl = False
                     time.sleep(1.0/(rig_poll_rate))
                     gc.collect()
