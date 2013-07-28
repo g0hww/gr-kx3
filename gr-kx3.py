@@ -16,16 +16,18 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with gr-kx3.  If not, see <http://www.gnu.org/licenses/>.
 
-Copyright 2012 Darren Long darren.long@mac.com
+Copyright 2012-2013 Darren Long darren.long@mac.com
 '''
 
 from datetime import datetime
 from gnuradio import audio
 from gnuradio import eng_notation
-from gnuradio import gr
 from gnuradio import window
 from gnuradio.eng_option import eng_option
-from gnuradio.gr import firdes
+from gnuradio import filter
+from gnuradio.filter import firdes 
+from gnuradio import blocks
+from gnuradio.blocks import float_to_complex
 from gnuradio.wxgui import fftsink2
 from gnuradio.wxgui import forms
 from gnuradio.wxgui import waterfallsink2
@@ -109,7 +111,7 @@ class grkx3(grc_wxgui.top_block_gui):
                         size=(1190/gui_scale,600/gui_scale),
                 )
                 self.nb0.GetPage(1).Add(self.wxgui_fftsink2_0.win)
-                self.gr_float_to_complex_0 = gr.float_to_complex(1)
+                self.gr_float_to_complex_0 = blocks.float_to_complex(1)
                 self._freq_text_box = forms.text_box(
                         parent=self.GetWin(),
                         value=self.freq,
