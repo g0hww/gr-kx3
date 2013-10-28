@@ -1,13 +1,13 @@
 gr-kx3
 ======
 
-A trivial panadapter for use with the Elecraft KX3, using gnuradio and hamlib, written in 
-Python and released under the GPLv3. There are some screenshots here: 
+A trivial pan-adapter for use with the Elecraft KX3, using gnuradio (see "Notes" below)
+and hamlib, written in Python and released under the GPLv3. There are some screen-shots here: 
 http://www.g0hww.net/2012/10/gnuradio-hamlib-and-kx3.html 
 and more here: 
 http://www.g0hww.net/2012/11/more-buttons-in-gr-kx3-more-bugs-too.html.
 
-It uses pulseaudio for the soundcard I/Q input, so when gr-kx3 is running, run Pulse
+It uses pulseaudio for the soundcard I/Q input by default, so when gr-kx3 is running, run Pulse
 Audio Volume Control and choose the correct soundcard for the stereo I/Q input from
 the KX3. For me, the application appears on the Recording tab, as 
 
@@ -35,14 +35,35 @@ radio, using a command like:
 
 	rigctld -m 229 -r /dev/ttyUSB0 -s 38400
 
-I found that I had to bodge hamlib itself in order to increase the timeouts for
-the KX3, which were exceeded whenever I switched bands on the radio.  There are
-some details here: 
-http://www.g0hww.net/2012/11/a-better-bodge-for-hamlib-and-kx3.html
+Notes
+=====
+
+Hamlib timeouts:
+ 
+ Initially I found that I had to bodge hamlib itself in order to increase the timeouts for
+ the KX3, which were exceeded whenever I switched bands on the radio. Newer versions of hamlib
+ may make this unnecessary, and gr-kx3 is now more robust. There are
+ some details of my original bodge here: 
+ http://www.g0hww.net/2012/11/a-better-bodge-for-hamlib-and-kx3.html
+
+Getting gnuradio:
+ 
+ I tend to stay fairly up-to-date with my gnuradio versions, and gr-kx3 is typically updated
+ to work with the latest versions of gnuradio. This may cause some incompatibilities with
+ older gnuradio versions.  YMMV, but hey, you can always hack the python yourself :)
+ 
+ Ubuntu Users can get probably get newish packages from the gqrx ppa, see here:
+  https://launchpad.net/~gqrx/+archive/releases
+ Otherwise, try following one of the methods listed here:
+  http://gnuradio.org/redmine/projects/gnuradio/wiki/InstallingGR
+
 
 
 Related Projects
 ================
+
+
+
 
 Stefano, IZ0MJE has posted about projects using Funcube Dongles and USRPs to tap IF 
 outputs from other Hamlib controlled transceivers, reusing code from gr-kx3.  See here:
