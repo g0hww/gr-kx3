@@ -22,7 +22,7 @@ Copyright 2012-2013 Darren Long darren.long@mac.com
 from datetime import datetime
 from gnuradio import audio
 from gnuradio import eng_notation
-from gnuradio import window
+from gnuradio.fft import window
 from gnuradio.eng_option import eng_option
 from gnuradio import filter
 from gnuradio.filter import firdes 
@@ -33,6 +33,7 @@ from gnuradio.wxgui import forms
 from gnuradio.wxgui import waterfallsink2
 from grc_gnuradio import wxgui as grc_wxgui
 from optparse import OptionParser
+import math
 import pexpect
 import mutex
 from threading import Thread, RLock
@@ -42,8 +43,22 @@ from decimal import *
 import traceback
 import gc
 
-gui_scale = 1
+
+##################################################
+# some customisable values follow
+##################################################
+# fft and wf width in number of pixels (also sets number of bins). A power of 2 is optimal.
+plot_width = 1024 # 2048 
+# fft and wf height in number of pixels
+plot_height = 600 
+# make the whole thing smaller by this much (so you can see other things), try 0.75
+gui_scale = 0.75
+# rigctld poll rate in herz
 rig_poll_rate = 4
+# the sound device for I/Q data from the KX3, try "pulse" or something more fancy like "hw:CARD=PCH,DEV=0"
+iq_device = "pulse"
+# the sample rate for the I/Q input.  try 48000, 96000 or 192000
+samp_rate = 48000
 
 class grkx3(grc_wxgui.top_block_gui):
 
@@ -59,13 +74,21 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.rigctl.timeout = 2.5
                 self.prefix = prefix = "~/grdata"
                 self.sync_freq = sync_freq = 2
-                self.samp_rate = samp_rate = 48000
+                self.samp_rate = samp_rate
                 self.recfile = recfile = prefix + datetime.now().strftime("%Y.%m.%d.%H.%M.%S") + ".dat"
                 self.freq = freq = rig_freq
                 self.click_freq = click_freq = 0
                 self.step_up = step_up = 1
                 self.step_size = step_size = 6
                 self.step_down = step_down = 1
+                
+                # calculate the number of FFT bins based on the width of the charts
+                log_width = math.log(gui_scale * plot_width,2)
+                if(0 != (log_width - int(log_width))):
+                	log_width = log_width + 1
+                num_bins = pow(2, int(log_width))
+                print  "Setting number of FFT bins to:" + str(num_bins)
+                
                 ##################################################
                 # Blocks
                 ##################################################
@@ -80,13 +103,13 @@ class grkx3(grc_wxgui.top_block_gui):
                         ref_level=-40,
                         ref_scale=1.0,
                         sample_rate=samp_rate,
-                        fft_size=2048,
+                        fft_size=num_bins,
                         fft_rate=30,
                         average=False,
                         avg_alpha=None,
                         title="Waterfall Plot",
                         win=window.hamming,
-                        size=(1190/gui_scale,600/gui_scale),
+                        size=(plot_width*gui_scale,plot_height*gui_scale),
                 )
                 self.nb0.GetPage(0).Add(self.wxgui_waterfallsink2_0.win)
                 def wxgui_waterfallsink2_0_callback(x, y):
@@ -97,18 +120,18 @@ class grkx3(grc_wxgui.top_block_gui):
                         self.nb0.GetPage(1).GetWin(),
                         baseband_freq=rig_freq,
                         y_per_div=10,
-                        y_divs=10,
+                        y_divs=8,
                         ref_level=0,
                         ref_scale=2.0,
                         sample_rate=samp_rate,
-                        fft_size=2048,
+                        fft_size=num_bins,
                         fft_rate=10,
                         average=True,
                         avg_alpha=None,
                         title="FFT Plot",
                         peak_hold=True,
                         win=window.flattop,
-                        size=(1190/gui_scale,600/gui_scale),
+                        size=(plot_width*gui_scale,plot_height*gui_scale),
                 )
                 self.nb0.GetPage(1).Add(self.wxgui_fftsink2_0.win)
                 self.gr_float_to_complex_0 = blocks.float_to_complex(1)
@@ -116,7 +139,7 @@ class grkx3(grc_wxgui.top_block_gui):
                         parent=self.GetWin(),
                         value=self.freq,
                         callback=self.set_text_freq,
-                        label="Frequency",
+                        label="\tFrequency",
                         converter=forms.float_converter(),
                 )
                 self.GridAdd(self._freq_text_box, 1, 0, 1, 1)
@@ -157,7 +180,7 @@ class grkx3(grc_wxgui.top_block_gui):
                 )
                 self.GridAdd(self._step_down_chooser, 1, 4, 1, 1)		
                 
-                self.audio_source_0 = audio.source(samp_rate, "pulse", True)
+                self.audio_source_0 = audio.source(samp_rate, iq_device, True)
                 
                 ##################################################
                 # Connections
