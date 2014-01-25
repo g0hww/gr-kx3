@@ -48,11 +48,11 @@ import gc
 # some customisable values follow
 ##################################################
 # fft and wf width in number of pixels (also sets number of bins). A power of 2 is optimal.
-plot_width = 1024 # 2048 
+plot_width = 1024 #1280 #2300 # 2048 
 # fft and wf height in number of pixels
 plot_height = 600 
 # make the whole thing smaller by this much (so you can see other things), try 0.75
-gui_scale = 0.75
+gui_scale = 1
 # rigctld poll rate in herz
 rig_poll_rate = 4
 # the sound device for I/Q data from the KX3, try "pulse" or something more fancy like "hw:CARD=PCH,DEV=0"
@@ -158,18 +158,10 @@ class grkx3(grc_wxgui.top_block_gui):
                         callback=self.set_step_size,
                         label="Step",
                         choices=[1, 2, 3,4,5,6,7],
-                        labels=["Band","1MHz","100kHz","10kHz","1kHz","100Hz","10Hz"],
+                        labels=["Dwell","1MHz","100kHz","10kHz","1kHz","100Hz","10Hz"],
                 )
                 self.GridAdd(self._step_size_chooser, 1, 2, 1, 1)
-                self._step_up_chooser = forms.button(
-                        parent=self.GetWin(),
-                        value=self.step_up,
-                        callback=self.set_step_up,
-                        label="",
-                        choices=[1],
-                        labels=["Step Up"],
-                )
-                self.GridAdd(self._step_up_chooser, 1, 3, 1, 1)
+
                 self._step_down_chooser = forms.button(
                         parent=self.GetWin(),
                         value=self.step_down,
@@ -178,8 +170,18 @@ class grkx3(grc_wxgui.top_block_gui):
                         choices=[1],
                         labels=["Step Down"],
                 )
-                self.GridAdd(self._step_down_chooser, 1, 4, 1, 1)		
+                self.GridAdd(self._step_down_chooser, 1, 3, 1, 1)		
                 
+                self._step_up_chooser = forms.button(
+                        parent=self.GetWin(),
+                        value=self.step_up,
+                        callback=self.set_step_up,
+                        label="",
+                        choices=[1],
+                        labels=["Step Up"],
+                )
+                self.GridAdd(self._step_up_chooser, 1, 4, 1, 1)
+
                 self.audio_source_0 = audio.source(samp_rate, iq_device, True)
                 
                 ##################################################
@@ -308,8 +310,9 @@ class grkx3(grc_wxgui.top_block_gui):
                 self._step_up_chooser.set_value(self.step_up)
                 # step up by the step size enum
                 if(1 == self.step_size):
-                    # step up one band
-                    print "Step Up: Band - not implemented"
+                    # step up one dwell, i.e. the sample rate
+                    self._freq_text_box.set_value(self.freq + (self.samp_rate))
+                    #print "Step Up: Band - not implemented"
                 elif(2 == self.step_size):
                     # step up 1MHz
                     self._freq_text_box.set_value(self.freq + 1000000.0)
@@ -340,8 +343,8 @@ class grkx3(grc_wxgui.top_block_gui):
                 self._step_down_chooser.set_value(self.step_down)
                 # step down by the step size enum
                 if(1 == self.step_size):
-                    # step down one band
-                    print "Step Down: Band - not implemented"
+                    # step up one dwell, i.e. the sample rate
+                    self._freq_text_box.set_value(self.freq - (self.samp_rate))
                 elif(2 == self.step_size):
                     # step down 1MHz
                     self._freq_text_box.set_value(self.freq - 1000000.0)
