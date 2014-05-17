@@ -52,13 +52,14 @@ plot_width = 1024 #1280 #2300 # 2048
 # fft and wf height in number of pixels
 plot_height = 600 
 # make the whole thing smaller by this much (so you can see other things), try 0.75
-gui_scale = 1
+gui_scale = 1.0
 # rigctld poll rate in herz
 rig_poll_rate = 4
 # the sound device for I/Q data from the KX3, try "pulse" or something more fancy like "hw:CARD=PCH,DEV=0"
 iq_device = "pulse"
 # the sample rate for the I/Q input.  try 48000, 96000 or 192000
 samp_rate = 48000
+dc_correction_length = 512
 
 class grkx3(grc_wxgui.top_block_gui):
 
@@ -100,7 +101,7 @@ class grkx3(grc_wxgui.top_block_gui):
                         self.nb0.GetPage(0).GetWin(),
                         baseband_freq=rig_freq,
                         dynamic_range=20,
-                        ref_level=-40,
+                        ref_level=-90,
                         ref_scale=1.0,
                         sample_rate=samp_rate,
                         fft_size=num_bins,
@@ -183,14 +184,17 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.GridAdd(self._step_up_chooser, 1, 4, 1, 1)
 
                 self.audio_source_0 = audio.source(samp_rate, iq_device, True)
+                self.dc_blocker_xx_0 = filter.dc_blocker_cc(dc_correction_length, True)
                 
                 ##################################################
                 # Connections
                 ##################################################
-                self.connect((self.gr_float_to_complex_0, 0), (self.wxgui_waterfallsink2_0, 0))
                 self.connect((self.audio_source_0, 1), (self.gr_float_to_complex_0, 0))
                 self.connect((self.audio_source_0, 0), (self.gr_float_to_complex_0, 1))
-                self.connect((self.gr_float_to_complex_0, 0), (self.wxgui_fftsink2_0, 0))
+                self.connect((self.gr_float_to_complex_0, 0), (self.dc_blocker_xx_0, 0))
+                self.connect((self.dc_blocker_xx_0, 0), (self.wxgui_waterfallsink2_0, 0))
+                self.connect((self.dc_blocker_xx_0, 0), (self.wxgui_fftsink2_0, 0))  
+                             
                 self.lock = RLock()
                 self.vfo_poll_skip = 0
                 self.set_rig_vfo = False
