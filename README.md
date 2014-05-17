@@ -23,7 +23,8 @@ will retune the rig to the selected frequency.
 You can click in the waterfall (not in the spectrum plot) to re-tune the radio 
 to that frequency.  You can select Step size increment from the drop down
 list, and nudge the frequency up and down with the Step Up/Down buttons.
-Support for stepping through bands is also planned but not yet implemented.
+Selecting the option "Dwell" for step-size automatically sets the step size to half the
+sampling rate, such that the spectrum is stepped through contiguously without gaps.
 
 Regarding frequency offsets from PBT settings and IF offset configurations, all
 bets are off for now, until the support for the FI command is added to the
