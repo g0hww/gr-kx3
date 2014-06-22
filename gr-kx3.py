@@ -48,7 +48,7 @@ import gc
 # some customisable values follow
 ##################################################
 # fft and wf width in number of pixels (also sets number of bins). A power of 2 is optimal.
-plot_width = 1024 #1280 #2300 # 2048 
+plot_width = 1100 #1280 #2300 # 2048 
 # fft and wf height in number of pixels
 plot_height = 600 
 # make the whole thing smaller by this much (so you can see other things), try 0.75
@@ -58,8 +58,10 @@ rig_poll_rate = 4
 # the sound device for I/Q data from the KX3, try "pulse" or something more fancy like "hw:CARD=PCH,DEV=0"
 iq_device = "pulse"
 # the sample rate for the I/Q input.  try 48000, 96000 or 192000
-samp_rate = 48000
-dc_correction_length = 512
+samp_rate = 96000
+dc_correction_length = 1024
+# click to tune quantisation step size
+ctq_step = 500.0
 
 class grkx3(grc_wxgui.top_block_gui):
 
@@ -74,13 +76,13 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.rigctl = pexpect.spawn("rigctl -m 2")
                 self.rigctl.timeout = 2.5
                 self.prefix = prefix = "~/grdata"
-                self.sync_freq = sync_freq = 2
+                self.sync_freq = sync_freq = 3
                 self.samp_rate = samp_rate
                 self.recfile = recfile = prefix + datetime.now().strftime("%Y.%m.%d.%H.%M.%S") + ".dat"
                 self.freq = freq = rig_freq
                 self.click_freq = click_freq = 0
                 self.step_up = step_up = 1
-                self.step_size = step_size = 6
+                self.step_size = step_size = 1
                 self.step_down = step_down = 1
                 
                 # calculate the number of FFT bins based on the width of the charts
@@ -101,7 +103,7 @@ class grkx3(grc_wxgui.top_block_gui):
                         self.nb0.GetPage(0).GetWin(),
                         baseband_freq=rig_freq,
                         dynamic_range=20,
-                        ref_level=-90,
+                        ref_level=-80,
                         ref_scale=1.0,
                         sample_rate=samp_rate,
                         fft_size=num_bins,
@@ -121,7 +123,7 @@ class grkx3(grc_wxgui.top_block_gui):
                         self.nb0.GetPage(1).GetWin(),
                         baseband_freq=rig_freq,
                         y_per_div=10,
-                        y_divs=8,
+                        y_divs=12,
                         ref_level=0,
                         ref_scale=2.0,
                         sample_rate=samp_rate,
@@ -158,7 +160,7 @@ class grkx3(grc_wxgui.top_block_gui):
                         value=self.step_size,
                         callback=self.set_step_size,
                         label="Step",
-                        choices=[1, 2, 3,4,5,6,7],
+                        choices=[1,2,3,4,5,6,7],
                         labels=["Dwell","1MHz","100kHz","10kHz","1kHz","100Hz","10Hz"],
                 )
                 self.GridAdd(self._step_size_chooser, 1, 2, 1, 1)
@@ -421,8 +423,9 @@ class grkx3(grc_wxgui.top_block_gui):
                     self.click_freq = float(click_freq)
                     print "* set_click_freq(" + str(self.click_freq) + ")"
                     self.set_rig_vfo = True
-                    self._freq_text_box.set_value( self.click_freq)
-                
+                    set_freq = int(Decimal(self.click_freq/ctq_step).quantize(Decimal('1'),rounding=ROUND_HALF_UP))*ctq_step
+                    self._freq_text_box.set_value(set_freq)
+                               
         def get_sync_freq(self):
                 return self.sync_freq
 
