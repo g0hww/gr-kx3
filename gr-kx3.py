@@ -54,14 +54,14 @@ plot_height = 600
 # make the whole thing smaller by this much (so you can see other things), try 0.75
 gui_scale = 1.0
 # rigctld poll rate in herz
-rig_poll_rate = 4
+rig_poll_rate = 5
 # the sound device for I/Q data from the KX3, try "pulse" or something more fancy like "hw:CARD=PCH,DEV=0"
 iq_device = "pulse"
 # the sample rate for the I/Q input.  try 48000, 96000 or 192000
-samp_rate = 96000
+samp_rate = 48000
+# fiddle with the dc_correction_length for best effect on the 0Hz artifact
 dc_correction_length = 1024
-# click to tune quantisation step size
-ctq_step = 500.0
+# note that click-to-tune quantisation is set by the selected step size!
 
 class grkx3(grc_wxgui.top_block_gui):
 
@@ -82,8 +82,11 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.freq = freq = rig_freq
                 self.click_freq = click_freq = 0
                 self.step_up = step_up = 1
-                self.step_size = step_size = 1
+                self.dwell_up = dwell_up = 1
                 self.step_down = step_down = 1
+                self.dwell_down = dwell_down = 1
+                self.step_size = step_size = 250
+                self.ctq_step = self.step_size
                 
                 # calculate the number of FFT bins based on the width of the charts
                 log_width = math.log(gui_scale * plot_width,2)
@@ -142,8 +145,8 @@ class grkx3(grc_wxgui.top_block_gui):
                         parent=self.GetWin(),
                         value=self.freq,
                         callback=self.set_text_freq,
-                        label="\tFrequency",
-                        converter=forms.float_converter(),
+                        label="  Frequency (Hz)",
+                        converter=forms.int_converter(),
                 )
                 self.GridAdd(self._freq_text_box, 1, 0, 1, 1)
                 self._sync_freq_chooser = forms.drop_down(
@@ -155,15 +158,36 @@ class grkx3(grc_wxgui.top_block_gui):
                         labels=["Entry","Track","Track & Click"],
                 )
                 self.GridAdd(self._sync_freq_chooser, 1, 1, 1, 1)
+                        
+                self._dwell_down_chooser = forms.button(
+                        parent=self.GetWin(),
+                        value=self.dwell_down,
+                        callback=self.set_dwell_down,
+                        label="",
+                        choices=[1],
+                        labels=["FFT Down"],
+                )
+                self.GridAdd(self._dwell_down_chooser, 1, 2, 1, 1)		
+                
+                self._dwell_up_chooser = forms.button(
+                        parent=self.GetWin(),
+                        value=self.dwell_up,
+                        callback=self.set_dwell_up,
+                        label="",
+                        choices=[1],
+                        labels=["FFT Up"],
+                )
+                self.GridAdd(self._dwell_up_chooser, 1, 3, 1, 1)                
+                
                 self._step_size_chooser = forms.drop_down(
                         parent=self.GetWin(),
                         value=self.step_size,
                         callback=self.set_step_size,
-                        label="Step",
-                        choices=[1,2,3,4,5,6,7],
-                        labels=["Dwell","1MHz","100kHz","10kHz","1kHz","100Hz","10Hz"],
+                        label="\tStep",
+                        choices=[1000000,100000,10000,1000,500,250,125,100,10],
+                        labels=["1MHz","100kHz","10kHz","1kHz","500Hz","250Hz","125Hz","100Hz","10Hz"],
                 )
-                self.GridAdd(self._step_size_chooser, 1, 2, 1, 1)
+                self.GridAdd(self._step_size_chooser, 1, 4, 1, 1)
 
                 self._step_down_chooser = forms.button(
                         parent=self.GetWin(),
@@ -173,7 +197,7 @@ class grkx3(grc_wxgui.top_block_gui):
                         choices=[1],
                         labels=["Step Down"],
                 )
-                self.GridAdd(self._step_down_chooser, 1, 3, 1, 1)		
+                self.GridAdd(self._step_down_chooser, 1, 5, 1, 1)		
                 
                 self._step_up_chooser = forms.button(
                         parent=self.GetWin(),
@@ -183,7 +207,7 @@ class grkx3(grc_wxgui.top_block_gui):
                         choices=[1],
                         labels=["Step Up"],
                 )
-                self.GridAdd(self._step_up_chooser, 1, 4, 1, 1)
+                self.GridAdd(self._step_up_chooser, 1, 6, 1, 1)
 
                 self.audio_source_0 = audio.source(samp_rate, iq_device, True)
                 self.dc_blocker_xx_0 = filter.dc_blocker_cc(dc_correction_length, True)
@@ -212,7 +236,6 @@ class grkx3(grc_wxgui.top_block_gui):
             self.lock.acquire()
             if self.vfo_poll_skip >= 0:
                 self.vfo_poll_skip = rig_poll_rate * 1
-                #traceback.print_stack()
             self.lock.release()
             gc.collect()
 
@@ -236,6 +259,8 @@ class grkx3(grc_wxgui.top_block_gui):
                 if res == 0:
                     rig_freq = self.poll_rigctl.before
                     self.set_rig_vfo = False
+                    if int(rig_freq) != int(self.freq):
+                        print "\n* poll_vfo(" + str(rig_freq) + ")"
                     self._freq_text_box.set_value(float(rig_freq))
                     retval = True
             return retval    
@@ -251,13 +276,12 @@ class grkx3(grc_wxgui.top_block_gui):
                     self.lock.acquire()
                     try:
                         if self.should_skip_vfo_poll_CS() == False:
-                            #msg = "_poll_vfo_probe() ... polling"
+                            # polling
                             if not self.poll_vfo():
                                 reset_rigctl = True
                         else:
-                            #msg = "_poll_vfo_probe() ... skipping poll: " + str(self.vfo_poll_skip)
+                            # skipping poll
                             pass
-                        #print msg
                     except AttributeError, e:
                         print "AttributeError in _poll_vfo_probe() ... rigctl error"
                         reset_rigctl = True
@@ -305,6 +329,7 @@ class grkx3(grc_wxgui.top_block_gui):
         def set_step_size(self, step_size):
                 self.step_size = step_size
                 self._step_size_chooser.set_value(self.step_size)
+                self.ctq_step = self.step_size
 
         def get_step_up(self):
                 return self.step_up
@@ -314,31 +339,9 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.set_rig_vfo = True
                 self.step_up = step_up
                 self._step_up_chooser.set_value(self.step_up)
-                # step up by the step size enum
-                if(1 == self.step_size):
-                    # step up one dwell, i.e. the sample rate
-                    self._freq_text_box.set_value(self.freq + (self.samp_rate))
-                    #print "Step Up: Band - not implemented"
-                elif(2 == self.step_size):
-                    # step up 1MHz
-                    self._freq_text_box.set_value(self.freq + 1000000.0)
-                elif(3 == self.step_size):
-                    # step up 100kHz
-                    self._freq_text_box.set_value(self.freq + 100000.0)
-                elif(4 == self.step_size):
-                    # step up 10kHz
-                    self._freq_text_box.set_value(self.freq + 10000.0)		    
-                elif(5 == self.step_size):
-                    # step up 1kHz
-                    self._freq_text_box.set_value(self.freq + 1000.0)
-                elif(6 == self.step_size):
-                    # step up 100Hz
-                    self._freq_text_box.set_value(self.freq + 100.0)
-                elif(7 == self.step_size):
-                    # step up 10Hz
-                    self._freq_text_box.set_value(self.freq + 10.0)
-
-                    
+                print "\n* set_step_up(" + str(self.freq + self.step_size) + ")"                
+                self._freq_text_box.set_value(self.freq + self.step_size)
+                 
         def get_step_down(self):
                 return self.step_down
 
@@ -347,29 +350,32 @@ class grkx3(grc_wxgui.top_block_gui):
                 self.set_rig_vfo = True
                 self.step_down = step_down
                 self._step_down_chooser.set_value(self.step_down)
-                # step down by the step size enum
-                if(1 == self.step_size):
-                    # step up one dwell, i.e. the sample rate
-                    self._freq_text_box.set_value(self.freq - (self.samp_rate))
-                elif(2 == self.step_size):
-                    # step down 1MHz
-                    self._freq_text_box.set_value(self.freq - 1000000.0)
-                elif(3 == self.step_size):
-                    # step down 100kHz
-                    self._freq_text_box.set_value(self.freq - 100000.0)
-                elif(4 == self.step_size):
-                    # step down 10kHz
-                    self._freq_text_box.set_value(self.freq - 10000.0)		    
-                elif(5 == self.step_size):
-                    # step down 1kHz
-                    self._freq_text_box.set_value(self.freq - 1000.0)
-                elif(6 == self.step_size):
-                    # step down 100Hz
-                    self._freq_text_box.set_value(self.freq - 100.0)
-                elif(7 == self.step_size):
-                    # step down 10Hz
-                    self._freq_text_box.set_value(self.freq - 10.0)
+                print "\n* set_step_down(" + str(self.freq - self.step_size) + ")"
+                self._freq_text_box.set_value(self.freq - self.step_size)
 
+        def get_dwell_up(self):
+                return self.dwell_up
+
+        def set_dwell_up(self, dwell_up):
+                self.skip_vfo_poll_CS()
+                self.set_rig_vfo = True
+                self.dwell_up = dwell_up
+                self._dwell_up_chooser.set_value(self.dwell_up)
+                # step up one dwell, i.e. the sample rate
+                print "\n* set_dwell_up(" + str(self.freq + (self.samp_rate)) + ")"
+                self._freq_text_box.set_value(self.freq + (self.samp_rate))
+
+        def get_dwell_down(self):
+                return self.dwell_down
+
+        def set_dwell_down(self, dwell_down):
+                self.skip_vfo_poll_CS()
+                self.set_rig_vfo = True
+                self.dwell_down = dwell_down
+                self._dwell_down_chooser.set_value(self.dwell_down)
+                # step down one dwell, i.e. the sample rate
+                print "\n* set_dwell_down(" + str(self.freq - (self.samp_rate)) + ")"
+                self._freq_text_box.set_value(self.freq - (self.samp_rate))
 
         def get_samp_rate(self):
                 return self.samp_rate
@@ -394,25 +400,17 @@ class grkx3(grc_wxgui.top_block_gui):
                 print "* set_text_freq(" + str(self.freq) + ") ... ignoring"
             else:
                 self.freq = freq
-                print "* set_text_freq(" + str(self.freq) + ")"
-                #traceback.print_stack()
+                print "* set_text_freq(" + str(int(self.freq)) + ")"
                 if 1 == self.sync_freq or self.set_rig_vfo == True:
-                    #self.skip_vfo_poll_CS()
                     self.set_rig_vfo = False
                     self.set_rig_freq()
                 self.set_baseband_freq(int(self.freq))
             self.lock.release()
-
-
         
         def set_rig_freq(self):
             print "* set_rig_freq(" + str(self.freq) + ")"
             self.rigctl.sendline("F " + str(self.freq))
             self.rigctl.expect("Rig command: ")
-            #result = self.rigctl.before
-            #print result
-            
-            
 
         def get_click_freq(self):
                 return self.click_freq
@@ -421,10 +419,10 @@ class grkx3(grc_wxgui.top_block_gui):
                 if 3 == self.sync_freq:
                     self.skip_vfo_poll_CS()
                     self.click_freq = float(click_freq)
-                    print "* set_click_freq(" + str(self.click_freq) + ")"
+                    print "\n* set_click_freq(" + str(int(self.click_freq)) + ")"
                     self.set_rig_vfo = True
-                    set_freq = int(Decimal(self.click_freq/ctq_step).quantize(Decimal('1'),rounding=ROUND_HALF_UP))*ctq_step
-                    self._freq_text_box.set_value(set_freq)
+                    set_freq = Decimal(self.click_freq/float(self.ctq_step)).quantize(Decimal('1'),rounding=ROUND_HALF_UP)*Decimal(str(self.ctq_step))
+                    self._freq_text_box.set_value(int(set_freq))
                                
         def get_sync_freq(self):
                 return self.sync_freq
@@ -437,8 +435,6 @@ class grkx3(grc_wxgui.top_block_gui):
                 elif 1 < self.sync_freq: # 2 is vfo tracking, 3 track and click
                     self.vfo_poll_skip = rig_poll_rate * 1
                 self.lock.release()
-
-
 
 if __name__ == '__main__':
         parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
